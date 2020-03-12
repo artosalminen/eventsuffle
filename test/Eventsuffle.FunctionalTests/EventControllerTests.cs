@@ -389,5 +389,140 @@ namespace Eventsuffle.FunctionalTests
                 Assert.Contains(date.Date, datesToBeVoted.ToList());
             }
         }
+
+        [Fact]
+        public async Task PostUpdateToExistingVote_V1_Happy()
+        {
+            // Arrange
+            var eventId = Guid.NewGuid();
+            var events = new Event[]
+            {
+                new Event
+                {
+                    Id = eventId,
+                    Name = "Event 1",
+                    SuggestedDates = new SuggestedDate[]
+                    {
+                        new SuggestedDate
+                        {
+                            Date = DateTime.Today.Date,
+                        },
+                        new SuggestedDate
+                        {
+                            Date = DateTime.Today.Date.AddDays(1),
+                        },
+                        new SuggestedDate
+                        {
+                            Date = DateTime.Today.Date.AddDays(2),
+                        }
+                    },
+                },
+                new Event
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Event 2",
+                },
+                new Event
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Event 3",
+                }
+            };
+
+            await AddRangeToDbAsync<EventSuffleDbContext, Event>(events);
+
+            var personName = "Elwood";
+            var datesToBeVoted1 = new DateTime[]
+                {
+                    DateTime.Today,
+                    DateTime.Today.AddDays(1),
+                };
+            VoteCreateViewModel vote1 = new VoteCreateViewModel
+            {
+                Name = personName,
+                Votes = datesToBeVoted1
+            };
+            var datesToBeVoted2 = new DateTime[]
+                {
+                    DateTime.Today.AddDays(1),
+                    DateTime.Today.AddDays(2),
+                };
+            VoteCreateViewModel vote2 = new VoteCreateViewModel
+            {
+                Name = personName,
+                Votes = datesToBeVoted2
+            };
+
+            var apiVersion = "1";
+            var api = GetApiClient();
+
+            // Act            
+            await api.AddVoteToEventAsync(eventId, apiVersion, vote1);
+
+            // Vote again by adding a date that was not existing in the first vote.            
+            var result = await api.AddVoteToEventAsync(eventId, apiVersion, vote2);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(eventId, result.Id);
+            Assert.Equal(3, result.Dates.Count);
+            Assert.Equal(3, result.Votes.Count);
+            Assert.True(result.Votes.All(i => i.People.Single() == personName));
+            foreach (var date in result.Votes.Select(i => i.Date))
+            {
+                Assert.Contains(date.Date, datesToBeVoted1.Concat(datesToBeVoted2).ToList());
+            }
+        }
+
+        [Fact]
+        public async Task PostVote_NonExsistingEvent_V1_Throws404Exception()
+        {
+            // Arrange
+            var eventId = Guid.NewGuid();
+            var events = new Event[]
+            {
+                new Event
+                {
+                    Id = eventId,
+                    Name = "Event 1",
+                    SuggestedDates = new SuggestedDate[]
+                    {
+                        new SuggestedDate
+                        {
+                            Date = DateTime.Today.Date,
+                        },
+                        new SuggestedDate
+                        {
+                            Date = DateTime.Today.Date.AddDays(1),
+                        },
+                        new SuggestedDate
+                        {
+                            Date = DateTime.Today.Date.AddDays(2),
+                        }
+                    },
+                }
+            };
+
+            await AddRangeToDbAsync<EventSuffleDbContext, Event>(events);
+
+            var datesToBeVoted = new DateTime[]
+                {
+                    DateTime.Today,
+                    DateTime.Today.AddDays(1),
+                };
+            VoteCreateViewModel vote = new VoteCreateViewModel
+            {
+                Name = "Elwood",
+                Votes = datesToBeVoted
+            };
+
+            var apiVersion = "1";
+            var api = GetApiClient();
+
+            // Act, assert
+            EvensuffleApiException exception = await Assert.ThrowsAsync<EvensuffleApiException>(async () => await api.AddVoteToEventAsync(Guid.NewGuid(), apiVersion, vote));
+
+            Assert.Equal(404, exception.StatusCode);
+        }
     }
 }

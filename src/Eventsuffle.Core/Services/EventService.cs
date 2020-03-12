@@ -14,16 +14,19 @@ namespace Eventsuffle.Core.Services
         private readonly IAsyncRepository<Event, Guid> _eventRepository;
         private readonly IAsyncRepository<Vote, Guid> _voteRepository;
         private readonly IAsyncRepository<SuggestedDate, Guid> _suggestedDateRepository;
+        private readonly IAsyncRepository<VoteSuggestedDate, Guid> _voteSuggestedDateRepository;
 
         public EventService(
             IAsyncRepository<Event, Guid> eventRepository,
             IAsyncRepository<Vote, Guid> voteRepository,
-            IAsyncRepository<SuggestedDate, Guid> suggestedDateRepository
+            IAsyncRepository<SuggestedDate, Guid> suggestedDateRepository,
+            IAsyncRepository<VoteSuggestedDate, Guid> voteSuggestedDateRepository
             )
         {
             _eventRepository = eventRepository;
             _voteRepository = voteRepository;
             _suggestedDateRepository = suggestedDateRepository;
+            _voteSuggestedDateRepository = voteSuggestedDateRepository;
         }
 
         public async Task<IEnumerable<Event>> GetAllEvents()
@@ -64,14 +67,19 @@ namespace Eventsuffle.Core.Services
 
             if (existingVote != null && suggestedDateIds.Any())
             {
-                existingVote.VoteSuggestedDates = existingVote.VoteSuggestedDates
-                    .Concat(
-                    suggestedDateIds.Select(i => 
-                    new VoteSuggestedDate { 
+                var existingVoteSuggestedDateIds = existingVote.VoteSuggestedDates.Select(i => i.SuggestedDateId).ToArray();
+                var addedVotesForExistingDates = suggestedDateIds
+                    .Where(suggestedDateId => !existingVoteSuggestedDateIds.Contains(suggestedDateId))
+                    .Select(suggestedDateId =>
+                    new VoteSuggestedDate
+                    {
                         VoteId = existingVote.Id,
-                        SuggestedDateId = i }
-                    )).ToArray();
-                await _voteRepository.UpdateAsync(existingVote);
+                        SuggestedDateId = suggestedDateId
+                    }).ToArray();
+                foreach(var addedVote in addedVotesForExistingDates)
+                {
+                    await _voteSuggestedDateRepository.AddAsync(addedVote);
+                }
             } 
             else if (suggestedDateIds.Any())
             {
@@ -84,6 +92,9 @@ namespace Eventsuffle.Core.Services
                         SuggestedDateId = i,
                     }).ToArray()
                 });
+            } else
+            {
+                return null;
             }
 
             return await GetEventByIdAsync(eventId);

@@ -43,6 +43,7 @@ namespace Eventsuffle
             services.AddScoped<IAsyncRepository<Event, Guid>, EfRepository<Event, Guid>>();
             services.AddScoped<IAsyncRepository<Vote, Guid>, EfRepository<Vote, Guid>>();
             services.AddScoped<IAsyncRepository<SuggestedDate, Guid>, EfRepository<SuggestedDate, Guid>>();
+            services.AddScoped<IAsyncRepository<VoteSuggestedDate, Guid>, EfRepository<VoteSuggestedDate, Guid>>();
 
             services.AddScoped<IEventService, EventService>();
         }

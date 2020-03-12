@@ -74,6 +74,10 @@ namespace Eventsuffle.Web.Controllers
                 return BadRequest(ModelState);
             }
             var updatedEvent = await _eventService.AddVotesToEventAsync(eventId, voteToCreate.Name, voteToCreate.Votes.ToList());
+            if (updatedEvent == null)
+            {
+                return NotFound();
+            }
             return Ok(updatedEvent.ToEventViewModel());
         }
 
