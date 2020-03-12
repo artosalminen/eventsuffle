@@ -9,6 +9,9 @@ Alternatively install the .NET Core SDK (3.1.2), build, and run the app:
 
 Navigate to [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html).
 
+The Swagger API explorer is enabled if you run the app in Development mode. Set `ASPNETCORE_ENVIRONMENT` environment
+variable as `Development` to run the app in Development mode.
+
 By default, the app uses an in memory database. You can, however, use an MS SQL DB for persisting data.
 Set your MS SQL DB connection settings into `appsettings.secret.json` file next to the Web project's
 `appsettings.json` file.
